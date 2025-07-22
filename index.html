@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PL</title>
+    <title>Um panorâma do Congresso: PL 2.159/2021</title>
     <link href="./src/output.css" rel="stylesheet" />
     <script src="./data.js"></script>
     <!-- Load d3.js -->
@@ -191,8 +191,8 @@ https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js
       <h1
         class="text-xl md:text-2xl font-bold my-8 max-w-prose mx-auto text-center"
       >
-        Correlação de forças no Congresso: <br />a votação do PL da devastação
-        em X gráficos.
+        Um panorâma do Congresso segundo a votação do PL da devastação, em X
+        gráficos.
       </h1>
       <h2 class="text-lg font-bold max-w-prose mx-auto text-center my-5">
         1. O quadro geral
@@ -474,8 +474,8 @@ https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js
           Como ler o gráfico abaixo?
         </h3>
         <p class="text-xs text-neutral-600 mb-2">
-          Idêntico ao gráfico acima, só que na horizontal. Clique ou passe o
-          mouse sobre a barra para identificar os partidos.
+          Idêntico ao gráfico acima, só que na horizontal. Mostra como é o
+          "espectro político" em que estamos metidos.
         </p>
       </div>
 
@@ -486,16 +486,16 @@ https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js
           :style="{width: (partido.TOTAL / total.TOTAL) * 100 + '%', backgroundColor: color(1-partido.ADESAO)}"
         >
           <div
-            class="hidden group-hover:block group-focus:block w-[1px] h-1 bg-black/50 absolute left-1/2 -translate-x-1/2 top-0 -translate-y-full"
+            class="hidden group-hover:block group-focus:block group-active:block w-[1px] h-1 bg-black/50 absolute left-1/2 -translate-x-1/2 top-0 -translate-y-full"
           ></div>
           <div
-            class="hidden group-hover:block group-focus:block absolute left-1/2 -translate-x-1/2 -top-1 -translate-y-full text-[10px]"
+            class="hidden group-hover:block group-focus:block group-active:block absolute left-1/2 -translate-x-1/2 -top-1 -translate-y-full text-[10px]"
           >
             {{((partido.SIM / partido.TOTAL) * 100).toFixed(1).replace('.0',
             '')}}%
           </div>
           <div
-            class="hidden group-hover:block group-focus:block absolute left-1/2 -translate-x-1/2 -top-4 -translate-y-full text-xs font-semibold"
+            class="hidden group-hover:block group-focus:block group-active:block absolute left-1/2 -translate-x-1/2 -top-4 -translate-y-full text-xs font-semibold"
           >
             {{partido.partido}}
           </div>

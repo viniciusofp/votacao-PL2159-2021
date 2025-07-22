@@ -801,6 +801,11 @@
       display: block;
     }
   }
+  .group-active\:block {
+    &:is(:where(.group):active *) {
+      display: block;
+    }
+  }
   .first\:border-t-0 {
     &:first-child {
       border-top-style: var(--tw-border-style);
