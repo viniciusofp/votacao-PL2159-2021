@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PL</title>
+    <link href="./src/output.css" rel="stylesheet" />
+    <script src="./data.js"></script>
+    <!-- Load d3.js -->
+    <script src="https://d3js.org/d3.v4.js"></script>
+
+    <script src="
+https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js
+"></script>
+    <script type="module">
+      import { createApp } from 'https://unpkg.com/petite-vue?module';
+      import { interpolateRgb } from 'https://cdn.skypack.dev/d3-interpolate@3';
+
+      createApp({
+        deputadosData: null,
+        // exposed to all expressions
+        porPartido: _.orderBy(data.porPartido, ['SIM', 'NAO'], ['desc', 'asc']),
+        total: data.total,
+        base: [
+          'PSD',
+          'MDB',
+          'PCdoB',
+          'União',
+          'PT',
+          'PSB',
+          'PP',
+          'PDT',
+          'Rede',
+          'Republicanos',
+          'PSOL'
+        ],
+        async loadData() {
+          try {
+            const res = await fetch(
+              'https://dadosabertos.camara.leg.br/api/v2/votacoes',
+              {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Accept: 'application/json'
+                }
+              }
+            ).then((res) => res.json());
+            this.deputadosData = res;
+          } catch (err) {
+            console.error('Fetch failed:', err);
+            this.deputadosData = { error: 'Could not load data' };
+          }
+        },
+        color(value) {
+          const interpolate = interpolateRgb.gamma(2.2)(
+            'mediumaquamarine',
+            'indianred'
+          );
+          return interpolate(value);
+        },
+        color2(value) {
+          const interpolate = interpolateRgb.gamma(0.8)('black', 'white');
+          return interpolate(value);
+        },
+        lineChart() {
+          const color = this.color;
+          const base = this.base;
+          // set the dimensions and margins of the graph
+          var margin = { top: 30, right: 50, bottom: 70, left: 50 },
+            width =
+              parseInt(d3.select('#my_dataviz').style('width'), 10) -
+              margin.left -
+              margin.right,
+            height = 400 - margin.top - margin.bottom;
+
+          // append the svg object to the body of the page
+          var svg = d3
+            .select('#my_dataviz')
+            .append('svg')
+            .attr('width', width + margin.left + margin.right)
+            .attr('height', height + margin.top + margin.bottom)
+            .append('g')
+            .attr(
+              'transform',
+              'translate(' + margin.left + ',' + margin.top + ')'
+            );
+
+          // X axis
+          var x = d3
+            .scaleBand()
+            .range([0, width])
+            .domain(
+              this.porPartido.map(function (d) {
+                return d.partido;
+              })
+            )
+            .padding(0.2);
+          svg
+            .append('g')
+            .attr('transform', 'translate(0,' + height + ')')
+            .call(d3.axisBottom(x))
+            .selectAll('text')
+            .attr('transform', 'translate(-10,3)rotate(-60)')
+            .style('text-anchor', 'end')
+            .style('z-index', '20')
+            .attr('font-weight', function (d) {
+              if (base.includes(d)) {
+                return 800;
+              } else {
+                return 400;
+              }
+            });
+
+          // Add Y axis
+          var y = d3.scaleLinear().domain([0, 1]).range([height, 0]);
+          svg.append('g').call(d3.axisLeft(y));
+
+          // Bars
+          svg
+            .selectAll('mybar')
+            .data(this.porPartido)
+            .enter()
+            .append('rect')
+            .attr('x', function (d) {
+              return x(d.partido) + x.bandwidth() / 2 - 0.5;
+            })
+            .attr('y', function (d) {
+              return y(1 - Math.abs((d.ADESAO - 0.5) * 2));
+            })
+            .attr('width', 1)
+            .attr('height', function (d) {
+              return height - y(1 - Math.abs((d.ADESAO - 0.5) * 2));
+            })
+            .attr('fill', function (d) {
+              return color(1 - d.ADESAO);
+            });
+          svg
+            .selectAll('mybar')
+            .data(this.porPartido)
+            .enter()
+            .append('circle')
+            .attr('cx', function (d) {
+              return x(d.partido) + x.bandwidth() / 2;
+            })
+            .attr('cy', function (d) {
+              return y(1 - Math.abs((d.ADESAO - 0.5) * 2));
+            })
+            .attr('r', function (d) {
+              return Math.sqrt(d.TOTAL) * 5;
+            })
+            .attr('stroke', function (d) {
+              if (base.includes(d.partido)) {
+                return '#262626';
+              }
+              return color(1 - d.ADESAO)
+                .replace(')', ',0.8)')
+                .replace('rgb(', 'rgba(');
+            })
+            .attr('stroke-width', '2')
+            .attr('fill', function (d) {
+              return color(1 - d.ADESAO)
+                .replace(')', ',0.4)')
+                .replace('rgb(', 'rgba(');
+            });
+          svg
+            .selectAll('mybar')
+            .data(this.porPartido)
+            .enter()
+            .append('circle')
+            .attr('cx', function (d) {
+              return x(d.partido) + x.bandwidth() / 2;
+            })
+            .attr('cy', function (d) {
+              return y(1 - Math.abs((d.ADESAO - 0.5) * 2));
+            })
+            .attr('r', 1.8)
+            .attr('fill', function (d) {
+              return '#262626';
+            });
+        },
+        mounted() {
+          console.log('MOUNTED!');
+          this.lineChart();
+        }
+      }).mount();
+    </script>
+  </head>
+  <body @vue:mounted="mounted">
+    <h1 class="text-2xl font-bold my-10 max-w-prose mx-auto text-center">
+      Correlação de forças no Congresso: <br />a votação do PL da devastação em
+      alguns gráficos.
+    </h1>
+    <div
+      class="p-3 relative max-w-prose bg-neutral-100 border border-neutral-200 w-[calc(100%-3rem)] rounded overflow-hidden mx-auto mt-8"
+    >
+      <h3 class="font-semibold text-base text-neutral-800 mb-1">
+        Como ler o gráfico abaixo?
+      </h3>
+      <p class="text-xs text-neutral-600 mb-2">
+        O gráfico lista os partidos de acordo com sua adesão ao projeto de lei
+        2.159/2021. À direita do nome do partido, entre parêntesis, está a
+        porcentagem de deputados que votou a favor da proposta.
+      </p>
+      <p class="text-xs text-neutral-600 mb-5">
+        O critério para ordenação é a quantidade de votos para a aprovação da
+        proposta, do partido com mais deputados que votaram a favor ao partido
+        com menos. Os partidos que não tiveram nenhum deputado a favor estão
+        ordenados do com menos votos ao com mais votos, espelhando a porção de
+        cima.
+      </p>
+      <div
+        class="border border-black/25 border-dashed rounded-sm flex flex-col items-center justify-center relative group pointer-events-none"
+      >
+        <p
+          class="text-sm tracking-wide w-max mx-auto z-10 mt-0.5 mb-0.5 font-semibold flex items-center gap-1"
+        >
+          Partido
+          <span class="font-light text-xs">Adesão (%)</span>
+        </p>
+        <div class="grid w-full grid-cols-2 z-10 mb-0.5">
+          <div
+            class="col-span-1 flex flex-wrap justify-end p-1 items-center gap-1"
+          >
+            <div class="rounded-full h-1.5 w-1.5 bg-neutral-600/80 m-0.5"></div>
+            <p class="text-xs">Votos contra</p>
+          </div>
+          <div
+            class="col-span-1 flex flex-wrap justify-start p-1 items-center gap-1"
+          >
+            <div class="rounded-full h-1.5 w-1.5 bg-neutral-600/80 m-0.5"></div>
+            <p class="text-xs">Votos a favor</p>
+          </div>
+        </div>
+        <div
+          class="absolute top-0 bg-neutral-600/10 bg left-1/2 h-6 z-0 group-hover:bg-neutral-600/25"
+          :style="{width: 'calc(25%)'}"
+        ></div>
+        <div
+          class="absolute top-0 bg-neutral-600/10 left-1/2 h-6 z-0 -translate-x-full group-hover:bg-neutral-600/25"
+          :style="{width: 25 + '%'}"
+        ></div>
+      </div>
+      <p class="text-xs text-neutral-600 mt-3 mb-2">
+        A barra logo atrás do nome representa essa porcentagem, se deslocando
+        <strong>da direita para a esquerda quanto menor</strong> é a adesão do
+        partido ao PL. As porções vermelha e ver da barra representam,
+        respectivamente, votos contra e a favor. Abaixo, cada bolinha vermelha
+        representa um deputado que votou "não" e cada colinha verde representa
+        um deputado que votou "sim".
+      </p>
+      <p class="text-xs text-neutral-600 mb-2">
+        Partidos com asterisco (*) ao lado do nome tem ao menos um ministério no
+        governo Lula.
+      </p>
+    </div>
+
+    <!-- v-scope value can be omitted -->
+    <div
+      class="relative bg-neutral-100 border border-neutral-200 w-[calc(100%-3rem)] max-w-prose rounded overflow-hidden mx-auto mt-5"
+    >
+      <div
+        class="grid w-full grid-cols-2 z-20 sticky top-0 bg-neutral-50 border-b text-xs font-medium"
+      >
+        <div
+          class="col-span-1 flex flex-wrap justify-center p-1 border-r border-dashed border-black/5 z-10"
+        >
+          CONTRA
+        </div>
+        <div class="col-span-1 flex flex-wrap justify-center p-1">A FAVOR</div>
+      </div>
+      <ul>
+        <li
+          v-for="partido in porPartido"
+          class="border-t first:border-t-0 border-t-black/5 flex flex-col items-center justify-center relative group hover:bg-black/2"
+        >
+          <p
+            class="text-sm tracking-wide w-max mx-auto z-10 mt-0.5 mb-0.5 font-semibold flex items-center gap-1"
+            :style="{transform: 'translateX(calc('+ (partido.ADESAO * 100 - 50) +'% + '+ (partido.ADESAO * 16 - 8) +'px))'}"
+          >
+            {{partido.partido}}{{base.includes(partido.partido) ? '*' : ''}}
+            <span class="font-light text-xs"
+              >({{(partido.ADESAO * 100).toFixed(1)}}%)</span
+            >
+          </p>
+          <div class="grid w-full grid-cols-2 z-10 mb-0.5">
+            <div class="col-span-1 flex flex-wrap justify-end p-1">
+              <div
+                v-for="item in [...Array(partido.NAO).keys()]"
+                class="rounded-full h-1.5 w-1.5 bg-[indianred] m-0.5"
+              ></div>
+            </div>
+            <div class="col-span-1 flex flex-wrap justify-start p-1">
+              <div
+                v-for="item in [...Array(partido.SIM).keys()]"
+                class="rounded-full h-1.5 w-1.5 bg-[mediumaquamarine] m-0.5"
+              ></div>
+            </div>
+          </div>
+
+          <div
+            class="absolute top-0 bg-[mediumaquamarine]/20 bg left-1/2 h-6 z-0 group-hover:bg-[mediumaquamarine]/25"
+            :style="{width: 'calc('+ partido.ADESAO * 50 + '%)'}"
+          ></div>
+          <div
+            class="absolute top-0 bg-[indianred]/20 left-1/2 h-6 z-0 -translate-x-full group-hover:bg-[indianred]/25"
+            :style="{width: (1 - partido.ADESAO) * 50 + '%'}"
+          ></div>
+        </li>
+        <div
+          class="absolute top-0 left-1/2 w-[1px] h-full border-l border-dashed border-black/10"
+        ></div>
+      </ul>
+    </div>
+
+    <hr class="my-8" />
+
+    <div
+      class="p-3 relative max-w-prose bg-neutral-100 border border-neutral-200 w-[calc(100%-3rem)] rounded overflow-hidden mx-auto mt-8"
+    >
+      <h3 class="font-semibold text-base text-neutral-800 mb-1">
+        Como ler o gráfico abaixo?
+      </h3>
+      <p class="text-xs text-neutral-600 mb-2">
+        O gráfico lista os partidos de acordo com sua adesão ao projeto de lei
+        2.159/2021. À direita do nome do partido, entre parêntesis, a quantidade
+        de deputados que votaram "sim" sobre o total de parlamentares (do
+        partido) que participou da votação.
+      </p>
+      <p class="text-xs text-neutral-600 mt-3 mb-2">
+        A barra está alinhada mais à direita ou à esquerda se os votantes do
+        partido votaram em maior número no "sim" ou no "não", respectivamente,
+        assim como as barras no gráfico acima.
+      </p>
+      <p class="text-xs text-neutral-600 mt-3 mb-2">
+        A altura de cada barra está ajustada de acordo com a quantidade de votos
+        totais do partido, portanto, a área das barras é proporcional ao seu
+        peso na votação. A porção verde da barra representa deputados que
+        votaram "sim" e a porção vermelha representa os que votaram "não".
+      </p>
+      <p class="text-xs text-neutral-600 mt-3 mb-2">
+        O critério para ordenação é a quantidade de votos para a aprovação da
+        proposta, do partido com mais deputados que votaram a favor ao partido
+        com menos.
+      </p>
+    </div>
+
+    <div
+      class="relative bg-neutral-100 border border-neutral-200 w-[calc(100%-3rem)] max-w-prose rounded mx-auto mb-16 mt-5"
+    >
+      <div
+        class="grid w-full grid-cols-2 z-20 sticky top-0 bg-neutral-50 border-b text-xs font-medium"
+      >
+        <div
+          class="col-span-1 flex flex-wrap justify-center p-1 border-r border-dashed border-black/5 z-10"
+        >
+          CONTRA
+        </div>
+        <div class="col-span-1 flex flex-wrap justify-center p-1">A FAVOR</div>
+      </div>
+      <ul>
+        <li
+          v-for="partido in _.orderBy(porPartido, ['ADESAO', 'TOTAL'], ['desc', 'desc'])"
+          class="border-t first:border-t-0 border-t-black/5 flex flex-col items-center justify-center relative group hover:bg-black/2"
+          :style="{height: partido.TOTAL * 2 + 'px'}"
+        >
+          <p
+            class="text-sm tracking-wide w-max mx-auto z-10 mt-0.5 mb-0.5 font-semibold"
+            :style="{transform: 'translateX(calc('+ (partido.ADESAO * 100 - 50) +'% + '+ (partido.ADESAO * 16 - 8) +'px))', fontSize: partido.TOTAL + 'px'}"
+          >
+            {{partido.partido}}
+            <span
+              class="font-light"
+              :style="{fontSize: Math.min(partido.TOTAL, 16) + 'px'}"
+              >({{partido.SIM}}/{{partido.TOTAL}})</span
+            >
+          </p>
+          <div
+            class="absolute bg-[mediumaquamarine]/90 bg left-1/2 h-full z-0 group-hover:bg-[mediumaquamarine]"
+            :style="{width:  (partido.SIM / partido.TOTAL) * 50 + '%'}"
+          ></div>
+          <div
+            class="absolute bg-[indianred]/90 left-1/2 h-full z-0 -translate-x-full group-hover:bg-[indianred]"
+            :style="{width:  (partido.NAO / partido.TOTAL) * 50 + '%'}"
+          ></div>
+        </li>
+        <div
+          class="absolute top-0 left-1/2 w-[1px] h-full border-l border-dashed border-black/10"
+        ></div>
+      </ul>
+    </div>
+
+    <hr class="my-8" />
+
+    <div
+      class="p-3 relative max-w-prose bg-neutral-100 border border-neutral-200 w-[calc(100%-3rem)] rounded overflow-hidden mx-auto mt-8"
+    >
+      <h3 class="font-semibold text-base text-neutral-800 mb-1">
+        Como ler o gráfico abaixo?
+      </h3>
+      <p class="text-xs text-neutral-600 mb-2">
+        O gráfico lista os partidos de acordo com sua adesão ao projeto de lei
+        2.159/2021. À direita do nome do partido, entre parêntesis, a quantidade
+        de deputados que votaram "sim" sobre o total de parlamentares (do
+        partido) que participou da votação.
+      </p>
+      <p class="text-xs text-neutral-600 mt-3 mb-2">
+        A altura de cada barra está ajustada de acordo com a quantidade de votos
+        totais do partido. A cor de cada barra varia entre o verde e o vermelho
+        a depender da porcentagem de parlamentares de cada partido que votou
+        "sim" ou "não".
+      </p>
+      <p class="text-xs text-neutral-600 mt-3 mb-2">
+        O critério para ordenação é o mesmo do gráfico acima.
+      </p>
+    </div>
+
+    <div
+      class="relative bg-neutral-100 border border-neutral-200 w-[calc(100%-3rem)] max-w-prose rounded mx-auto mb-16 mt-5"
+    >
+      <ul>
+        <li
+          v-for="partido in _.orderBy(porPartido, ['ADESAO', 'TOTAL'], ['desc', 'desc'])"
+          class="border-t first:border-t-0 border-t-black/5 flex flex-col items-center justify-center relative group hover:bg-black/2"
+          :style="{height: partido.TOTAL * 2 + 'px',backgroundColor: color(1-partido.ADESAO)}"
+        >
+          <p
+            class="-translate-y-1/2 leading-0 uppercase tracking-wide text-neutral-800 ml-3 font-semibold"
+            :style="{fontSize: partido.TOTAL + 'px'}"
+          >
+            {{partido.partido}}
+            <span class="font-light">({{partido.SIM}}/{{partido.TOTAL}})</span>
+          </p>
+        </li>
+      </ul>
+    </div>
+
+    <hr class="my-8" />
+
+    <div
+      class="p-3 relative max-w-prose bg-neutral-100 border border-neutral-200 w-[calc(100%-3rem)] rounded overflow-hidden mx-auto mt-8"
+    >
+      <h3 class="font-semibold text-base text-neutral-800 mb-1">
+        Como ler o gráfico abaixo?
+      </h3>
+      <p class="text-xs text-neutral-600 mb-2">
+        Idêntico ao gráfico acima, só que na horizontal. Clique ou passe o mouse
+        sobre a barra para identificar os partidos.
+      </p>
+    </div>
+
+    <ul class="flex mx-auto w-full max-w-prose mb-16 mt-12">
+      <button
+        v-for="partido in _.orderBy(porPartido, ['ADESAO', 'TOTAL'], ['desc', 'desc'])"
+        class="h-24 relative group border-r border-black/5 hover:opacity-80 focus:opacity-80 cursor-pointer"
+        :style="{width: (partido.TOTAL / total.TOTAL) * 100 + '%', backgroundColor: color(1-partido.ADESAO)}"
+      >
+        <div
+          class="hidden group-hover:block group-focus:block w-[1px] h-1 bg-black/50 absolute left-1/2 -translate-x-1/2 top-0 -translate-y-full"
+        ></div>
+        <div
+          class="hidden group-hover:block group-focus:block absolute left-1/2 -translate-x-1/2 -top-1 -translate-y-full text-[10px]"
+        >
+          {{((partido.SIM / partido.TOTAL) * 100).toFixed(1).replace('.0',
+          '')}}%
+        </div>
+        <div
+          class="hidden group-hover:block group-focus:block absolute left-1/2 -translate-x-1/2 -top-4 -translate-y-full text-xs font-semibold"
+        >
+          {{partido.partido}}
+        </div>
+      </button>
+    </ul>
+
+    <hr class="my-8" />
+
+    <div
+      class="p-3 relative max-w-prose bg-neutral-100 border border-neutral-200 w-[calc(100%-3rem)] rounded overflow-hidden mx-auto mt-8"
+    >
+      <h3 class="font-semibold text-base text-neutral-800 mb-1">
+        Como ler o gráfico abaixo?
+      </h3>
+      <p class="text-xs text-neutral-600 mt-3 mb-2">
+        A ordenação dos partidos no eixo X e as cores dos círculos seguem a
+        mesma lógica dos dois gráficos anteriores.
+      </p>
+      <p class="text-xs text-neutral-600 mt-3 mb-2">
+        A área de cada círculo corresponde à quantidade de votos de cada
+        partido.
+        <strong
+          >Os partidos com nome em negrito e com o círculo com borda preta tem
+          ao menos um ministério no governo Lula.</strong
+        >
+      </p>
+      <p class="text-xs text-neutral-600 mt-3 mb-2">
+        O eixo Y representa a seguinte conta: 1 - Math.abs(((partido.votos.SIM /
+        partido.votos.TOTAL) - 0.5) * 2)
+      </p>
+      <p class="text-xs text-neutral-600 mt-3 mb-2">
+        Explicando: a conta acima gera um valor entre 0 e 1 para cada partido e
+        representa a tendência dos parlamentares desse partido de votarem
+        juntos. Um valor igual a 0 significa que todos os deputados votaram
+        igual, TODOS votaram "sim" ou "não". Um valor igual a 1 significaria que
+        metade dos parlamentares votou "sim" e metade votou "não".
+      </p>
+      <p class="text-xs text-neutral-600 mt-3 mb-2 strong">
+        Ou seja, quanto mais próximo de 0, mais homogêneo os votos do partido.
+        Quanto mais próximo de 1, mais dividido ficou o partido.
+      </p>
+    </div>
+
+    <!-- Create a div where the graph will take place -->
+    <div id="my_dataviz" class="max-w-prose w-full mx-auto mb-16"></div>
+  </body>
+</html>
